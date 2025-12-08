@@ -17,6 +17,15 @@
         "tsConfigPath": "apps/api-gateway/tsconfig.app.json"
       }
     },
+    "course-service": {
+      "type": "application",
+      "root": "apps/course-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/course-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/course-service/tsconfig.app.json"
+      }
+    },
     "identity-service": {
       "type": "application",
       "root": "apps/identity-service",
