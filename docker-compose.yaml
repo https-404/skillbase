@@ -1,0 +1,62 @@
+services:
+  # 1. SQL Database (PostgreSQL) - For Auth, Courses, Reviews
+  db-sql:
+    image: postgres:latest
+    container_name: skillbase-sql
+    restart: always
+    environment:
+      POSTGRES_USER: skillbaseadmin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: skillbase_db
+    ports:
+      - '5432:5432' # Expose to host for dev tools (e.g., PgAdmin)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. NoSQL Database (MongoDB) - For Learning Progress, Media Metadata
+  db-nosql:
+    image: mongo:latest
+    container_name: skillbase-nosql
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: skillbaseadmin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: skillbase_db
+    ports:
+      - '27017:27017' # Expose to host for dev tools
+    volumes:
+      - mongo_data:/data/db
+
+  # 3. Message Broker (RabbitMQ) - For Asynchronous Events
+  message-broker:
+    image: rabbitmq:3-management
+    container_name: skillbase-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: skillbaseadmin
+      RABBITMQ_DEFAULT_PASS: password123
+    ports:
+      - '5672:5672' # AMQP protocol port (for services to connect)
+      - '15672:15672' # Management UI port (check queues/messages at http://localhost:15672)
+
+  # 4. Caching Service (Redis)
+  caching-service:
+    image: redis:latest
+    container_name: skillbase-redis
+    restart: always
+    ports:
+      - '6379:6379'
+
+  # 5. Search Engine (Meilisearch)
+  search-engine:
+    image: getmeili/meilisearch:latest
+    container_name: skillbase-meilisearch
+    restart: always
+    environment:
+      MEILI_MASTER_KEY: masterKey
+    ports:
+      - '7700:7700' # Expose for Indexer Service and API Gateway
+
+volumes:
+  postgres_data:
+  mongo_data:

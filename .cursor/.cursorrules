@@ -1,0 +1,88 @@
+
+## 🚀 Project Overview: Skillbase E-Learning Platform
+
+-----
+
+### 1\. Project Goal and Architecture
+
+The **Skillbase** is a modular, scalable e-learning platform designed to allow instructors to curate and publish courses and allow learners to track their progress. It is built using a **Microservices Architecture** to learn asynchronous communication, polyglot persistence (SQL/NoSQL), and modern DevOps practices (Docker).
+
+[Image of microservices architecture diagram showing API Gateway, services, database, and message queue]
+
+  * **Framework:** **NestJS** (for all microservices and the API Gateway).
+  * **Deployment:** **Docker** and **Docker Compose** for easy setup and isolation.
+  * **Communication:** **HTTP/gRPC** (Synchronous) via API Gateway and **RabbitMQ** (Asynchronous) for events.
+
+-----
+
+### 2\. Microservices Application Structure
+
+The project uses a **NestJS Monorepo** structure (`nest new learner-hub --type=monorepo`). All services reside in the `/apps` directory.
+
+#### Folder Structure (Monorepo Root)
+
+```
+/learner-hub
+|-- /apps                <-- All individual microservices live here
+|   |-- /api-gateway
+|   |-- /identity-service
+|   |-- /course-service
+|   |-- /media-service
+|   |-- /progress-service
+|   |-- /reviews-service
+|   |-- /indexer-service
+|-- /libs                <-- Shared code (e.g., DTOs, interfaces, common validation)
+|-- docker-compose.yml   <-- Defines all infrastructure and microservices
+|-- package.json         <-- NestJS monorepo scripts
+|-- tsconfig.json
+```
+
+-----
+
+### 3\. Service Breakdown and Data Persistence
+
+Each service is responsible for a single business domain and uses the most appropriate database type, illustrating **Polyglot Persistence**.
+
+| Service Name | Primary Responsibilities | Database | Communication | Key Technologies |
+| :--- | :--- | :--- | :--- | :--- |
+| **API Gateway** | Entry point, Authentication validation, Request routing, Rate limiting, Caching (Redis). | **Redis** (Caching) | HTTP (Client), TCP/gRPC (Microservices) | NestJS HTTP, Passport/JWT |
+| **Identity Service** | User registration/login, JWT generation, User roles (Learner/Instructor). | **SQL (PostgreSQL)** | Synchronous (API Gateway) | TypeORM |
+| **Course Service** | Course creation, Lesson structure, Category/Tag management. | **SQL (PostgreSQL)** | Synchronous (API Gateway, Reviews Service) | TypeORM, emits `course_published` event |
+| **Media Service** | Handles custom video/document uploads, stores file metadata, integrates with S3/MinIO. | **NoSQL (MongoDB)** | Synchronous (Course Service) | Mongoose, File Upload Handlers |
+| **Progress Service** | Tracks user progress (watch time, completed lessons, quizzes). | **NoSQL (MongoDB)** | Synchronous (API Gateway), emits `lesson_completed` event | Mongoose, Event Emitter |
+| **Reviews Service** | Handles course reviews, ratings, comment submission, average rating calculation. | **SQL (PostgreSQL)** | Synchronous (API Gateway) | TypeORM |
+| **Indexer Service** | Listens for course/review events and updates the search index. | **N/A (Uses Search Engine)** | Asynchronous (RabbitMQ) | NestJS Microservices, **Meilisearch/Elasticsearch** client |
+
+-----
+
+### 4\. Infrastructure Services (Docker Compose)
+
+The `docker-compose.yml` file defines all supporting open-source infrastructure:
+
+  * **`db-sql`:** A PostgreSQL container for the SQL-based services.
+  * **`db-nosql`:** A MongoDB container for the NoSQL-based services.
+  * **`caching-service`:** A Redis container for high-speed caching in the API Gateway and Course Service.
+  * **`message-broker`:** A **RabbitMQ** container to manage asynchronous events and decoupling.
+  * **`search-engine`:** A **Meilisearch** or **Elasticsearch** container for powerful, fast course searching.
+
+-----
+
+### 5\. Communication and Event Flow
+
+#### A. Synchronous Flow (Client Request)
+
+1.  Client sends request to `http://localhost:3000/courses/123`.
+2.  **API Gateway** validates the user's JWT via the **Identity Service**.
+3.  **API Gateway** routes the request to the **Course Service**.
+4.  **Course Service** fetches data from its SQL DB and returns it.
+
+#### B. Asynchronous Flow (Progress Update)
+
+1.  A learner finishes watching a lesson (Client calls the **Progress Service**).
+2.  **Progress Service** saves the completion status to **MongoDB**.
+3.  **Progress Service** emits an asynchronous event (`lesson_completed`) to **RabbitMQ**.
+4.  The **Reviews Service** and **Course Service** (and potentially others) are configured as listeners and consume the `lesson_completed` message to perform secondary tasks (e.g., mark course progress, allow review posting).
+
+This structure ensures you hit all the target learning outcomes: **SQL**, **NoSQL**, **API Gateway**, **Queuing**, **Caching**, and **Advanced Search**.
+
+Would you like to focus next on the environment setup, perhaps writing the initial `docker-compose.yml` file?
