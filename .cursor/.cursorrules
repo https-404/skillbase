@@ -22,7 +22,7 @@ The project uses a **NestJS Monorepo** structure (`nest new learner-hub --type=m
 #### Folder Structure (Monorepo Root)
 
 ```
-/learner-hub
+/skillbase
 |-- /apps                <-- All individual microservices live here
 |   |-- /api-gateway
 |   |-- /identity-service
