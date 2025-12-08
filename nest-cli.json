@@ -35,6 +35,42 @@
         "tsConfigPath": "apps/identity-service/tsconfig.app.json"
       }
     },
+    "indexer-service": {
+      "type": "application",
+      "root": "apps/indexer-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/indexer-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/indexer-service/tsconfig.app.json"
+      }
+    },
+    "media-service": {
+      "type": "application",
+      "root": "apps/media-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/media-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/media-service/tsconfig.app.json"
+      }
+    },
+    "progress-service": {
+      "type": "application",
+      "root": "apps/progress-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/progress-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/progress-service/tsconfig.app.json"
+      }
+    },
+    "reviews-service": {
+      "type": "application",
+      "root": "apps/reviews-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/reviews-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/reviews-service/tsconfig.app.json"
+      }
+    },
     "shared": {
       "type": "library",
       "root": "libs/shared",

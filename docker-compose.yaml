@@ -57,6 +57,36 @@ services:
     ports:
       - '7700:7700' # Expose for Indexer Service and API Gateway
 
+  # 6. Object Storage (MinIO) - For Media Files (Videos, Documents)
+  minio:
+    image: minio/minio:latest
+    container_name: skillbase-minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: server /data --console-address ":9001"
+    ports:
+      - '9000:9000' # S3 API
+      - '9001:9001' # Web UI
+    volumes:
+      - minio_data:/data
+
+  # 7. MinIO Initialization - Creates bucket and sets permissions
+  minio-init:
+    image: minio/mc:latest
+    container_name: skillbase-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      sh -c "
+      sleep 5 &&
+      mc alias set local http://minio:9000 minioadmin minioadmin123 &&
+      mc mb -p local/skillbase-media || true &&
+      mc anonymous set public local/skillbase-media
+      "
+
 volumes:
   postgres_data:
   mongo_data:
+  minio_data:

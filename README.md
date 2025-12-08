@@ -67,6 +67,7 @@ This will start:
 - RabbitMQ on ports `5672` (AMQP) and `15672` (Management UI)
 - Redis on port `6379`
 - Meilisearch on port `7700`
+- MinIO on ports `9000` (S3 API) and `9001` (Web UI)
 
 ### Running the Application
 
@@ -81,12 +82,20 @@ This will start all services concurrently:
 - API Gateway on port `3000`
 - Identity Service on port `3001`
 - Course Service on port `3002`
+- Media Service on port `3003`
+- Progress Service on port `3004`
+- Reviews Service on port `3005`
+- Indexer Service on port `3006`
 
 Start a specific service:
 ```bash
 pnpm run start:api-gateway      # Port 3000
 pnpm run start:identity-service # Port 3001
 pnpm run start:course-service   # Port 3002
+pnpm run start:media-service     # Port 3003
+pnpm run start:progress-service  # Port 3004
+pnpm run start:reviews-service  # Port 3005
+pnpm run start:indexer-service   # Port 3006
 ```
 
 Or use the default (starts API Gateway only):
@@ -154,6 +163,37 @@ pnpm run test:e2e
 - Database: PostgreSQL
 - **Environment Variable:** `COURSESERVICE_PORT`
 
+### Media Service
+- **Default Port:** `3003`
+- Handles video/document uploads
+- Stores file metadata
+- Integrates with MinIO (S3-compatible storage)
+- Database: MongoDB
+- **Environment Variable:** `MEDIASERVICE_PORT`
+
+### Progress Service
+- **Default Port:** `3004`
+- Tracks user learning progress
+- Watch time, completed lessons, quizzes
+- Emits `lesson_completed` events to RabbitMQ
+- Database: MongoDB
+- **Environment Variable:** `PROGRESSSERVICE_PORT`
+
+### Reviews Service
+- **Default Port:** `3005`
+- Course reviews and ratings
+- Comment submission
+- Average rating calculation
+- Database: PostgreSQL
+- **Environment Variable:** `REVIEWSSERVICE_PORT`
+
+### Indexer Service
+- **Default Port:** `3006`
+- Listens for course/review events via RabbitMQ
+- Updates search index in Meilisearch
+- Enables fast course search
+- **Environment Variable:** `INDEXERSERVICE_PORT`
+
 ## 🔧 Development
 
 ### Code Formatting
@@ -185,10 +225,18 @@ The `docker-compose.yaml` file defines the following infrastructure:
 | RabbitMQ | 5672, 15672 | Message broker (AMQP + Management UI) |
 | Redis | 6379 | In-memory cache |
 | Meilisearch | 7700 | Search engine |
+| MinIO | 9000, 9001 | S3-compatible object storage (API + Web UI) |
 
-Access RabbitMQ Management UI at: http://localhost:15672
+### Accessing Services
+
+**RabbitMQ Management UI:** http://localhost:15672
 - Username: `skillbaseadmin`
 - Password: `password123`
+
+**MinIO Web UI:** http://localhost:9001
+- Username: `minioadmin`
+- Password: `minioadmin123`
+- Bucket: `skillbase-media` (auto-created)
 
 ## 📝 License
 
