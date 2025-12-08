@@ -11,7 +11,7 @@ services:
     ports:
       - '5432:5432' # Expose to host for dev tools (e.g., PgAdmin)
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
 
   # 2. NoSQL Database (MongoDB) - For Learning Progress, Media Metadata
   db-nosql:
