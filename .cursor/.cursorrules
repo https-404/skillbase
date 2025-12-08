@@ -1,4 +1,3 @@
-
 ## 🚀 Project Overview: Skillbase E-Learning Platform
 
 -----
@@ -17,7 +16,7 @@ The **Skillbase** is a modular, scalable e-learning platform designed to allow i
 
 ### 2\. Microservices Application Structure
 
-The project uses a **NestJS Monorepo** structure (`nest new learner-hub --type=monorepo`). All services reside in the `/apps` directory.
+The project uses a **NestJS Monorepo** structure (`nest new skillbase --type=monorepo`). All services reside in the `/apps` directory.
 
 #### Folder Structure (Monorepo Root)
 
@@ -32,7 +31,7 @@ The project uses a **NestJS Monorepo** structure (`nest new learner-hub --type=m
 |   |-- /reviews-service
 |   |-- /indexer-service
 |-- /libs                <-- Shared code (e.g., DTOs, interfaces, common validation)
-|-- docker-compose.yml   <-- Defines all infrastructure and microservices
+|-- docker-compose.yaml  <-- Defines all infrastructure and microservices
 |-- package.json         <-- NestJS monorepo scripts
 |-- tsconfig.json
 ```
@@ -57,7 +56,7 @@ Each service is responsible for a single business domain and uses the most appro
 
 ### 4\. Infrastructure Services (Docker Compose)
 
-The `docker-compose.yml` file defines all supporting open-source infrastructure:
+The `docker-compose.yaml` file defines all supporting open-source infrastructure:
 
   * **`db-sql`:** A PostgreSQL container for the SQL-based services.
   * **`db-nosql`:** A MongoDB container for the NoSQL-based services.
@@ -84,5 +83,3 @@ The `docker-compose.yml` file defines all supporting open-source infrastructure:
 4.  The **Reviews Service** and **Course Service** (and potentially others) are configured as listeners and consume the `lesson_completed` message to perform secondary tasks (e.g., mark course progress, allow review posting).
 
 This structure ensures you hit all the target learning outcomes: **SQL**, **NoSQL**, **API Gateway**, **Queuing**, **Caching**, and **Advanced Search**.
-
-Would you like to focus next on the environment setup, perhaps writing the initial `docker-compose.yml` file?
