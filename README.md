@@ -72,15 +72,26 @@ This will start:
 
 #### Development Mode
 
-Start all services in watch mode:
+Start all services in watch mode (recommended):
 ```bash
-pnpm run start:dev
+pnpm run start:all
 ```
+
+This will start all services concurrently:
+- API Gateway on port `3000`
+- Identity Service on port `3001`
+- Course Service on port `3002`
 
 Start a specific service:
 ```bash
-pnpm run start:dev api-gateway
-pnpm run start:dev identity-service
+pnpm run start:api-gateway      # Port 3000
+pnpm run start:identity-service # Port 3001
+pnpm run start:course-service   # Port 3002
+```
+
+Or use the default (starts API Gateway only):
+```bash
+pnpm run start:dev
 ```
 
 #### Production Mode
@@ -120,16 +131,28 @@ pnpm run test:e2e
 ## 📦 Services
 
 ### API Gateway
+- **Default Port:** `3000`
 - Entry point for all client requests
 - Authentication validation
 - Request routing to microservices
 - Rate limiting and caching (Redis)
+- **Environment Variable:** `APIGATEWAY_PORT`
 
 ### Identity Service
+- **Default Port:** `3001`
 - User registration and authentication
 - JWT token generation
 - User role management (Learner/Instructor)
 - Database: PostgreSQL
+- **Environment Variable:** `IDENTITYSERVICE_PORT`
+
+### Course Service
+- **Default Port:** `3002`
+- Course creation and management
+- Lesson structure
+- Category/Tag management
+- Database: PostgreSQL
+- **Environment Variable:** `COURSESERVICE_PORT`
 
 ## 🔧 Development
 

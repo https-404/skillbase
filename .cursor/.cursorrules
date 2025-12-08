@@ -82,4 +82,4 @@ The `docker-compose.yaml` file defines all supporting open-source infrastructure
 3.  **Progress Service** emits an asynchronous event (`lesson_completed`) to **RabbitMQ**.
 4.  The **Reviews Service** and **Course Service** (and potentially others) are configured as listeners and consume the `lesson_completed` message to perform secondary tasks (e.g., mark course progress, allow review posting).
 
-This structure ensures you hit all the target learning outcomes: **SQL**, **NoSQL**, **API Gateway**, **Queuing**, **Caching**, and **Advanced Search**.
+
