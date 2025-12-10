@@ -12,6 +12,32 @@ services:
       - '5432:5432' # Expose to host for dev tools (e.g., PgAdmin)
     volumes:
       - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skillbaseadmin"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 1a. PostgreSQL Initialization - Creates logical databases
+  postgres-init:
+    image: postgres:latest
+    container_name: skillbase-postgres-init
+    depends_on:
+      db-sql:
+        condition: service_healthy
+    environment:
+      PGHOST: db-sql
+      PGPORT: 5432
+      PGUSER: skillbaseadmin
+      PGPASSWORD: password123
+    entrypoint: >
+      sh -c "
+      sleep 2 &&
+      psql -c 'CREATE DATABASE identity_db;' || true &&
+      psql -c 'CREATE DATABASE course_db;' || true &&
+      psql -c 'CREATE DATABASE reviews_db;' || true &&
+      echo 'PostgreSQL databases initialized'
+      "
 
   # 2. NoSQL Database (MongoDB) - For Learning Progress, Media Metadata
   db-nosql:
@@ -26,8 +52,33 @@ services:
       - '27017:27017' # Expose to host for dev tools
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2a. MongoDB Initialization - Creates logical databases
+  mongo-init:
+    image: mongo:latest
+    container_name: skillbase-mongo-init
+    depends_on:
+      db-nosql:
+        condition: service_healthy
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: skillbaseadmin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    entrypoint: >
+      sh -c "
+      sleep 3 &&
+      mongosh mongodb://skillbaseadmin:password123@db-nosql:27017/admin --eval 'db.getSiblingDB(\"media_db\").createCollection(\"init\"); db.getSiblingDB(\"media_db\").init.drop();' &&
+      mongosh mongodb://skillbaseadmin:password123@db-nosql:27017/admin --eval 'db.getSiblingDB(\"progress_db\").createCollection(\"init\"); db.getSiblingDB(\"progress_db\").init.drop();' &&
+      echo 'MongoDB databases initialized'
+      "
 
   # 3. Message Broker (RabbitMQ) - For Asynchronous Events
+  # Exchange 'skillbase.events' (topic) will be created by services on startup
+  # Standardized events: course.published, lesson.completed, review.created
   message-broker:
     image: rabbitmq:3-management
     container_name: skillbase-rabbitmq

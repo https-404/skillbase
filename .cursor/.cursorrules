@@ -44,13 +44,13 @@ Each service is responsible for a single business domain and uses the most appro
 
 | Service Name | Primary Responsibilities | Database | Communication | Key Technologies |
 | :--- | :--- | :--- | :--- | :--- |
-| **API Gateway** | Entry point, Authentication validation, Request routing, Rate limiting, Caching (Redis). | **Redis** (Caching) | HTTP (Client), TCP/gRPC (Microservices) | NestJS HTTP, Passport/JWT |
-| **Identity Service** | User registration/login, JWT generation, User roles (Learner/Instructor). | **SQL (PostgreSQL)** | Synchronous (API Gateway) | TypeORM |
-| **Course Service** | Course creation, Lesson structure, Category/Tag management. | **SQL (PostgreSQL)** | Synchronous (API Gateway, Reviews Service) | TypeORM, emits `course_published` event |
-| **Media Service** | Handles custom video/document uploads, stores file metadata, integrates with S3/MinIO. | **NoSQL (MongoDB)** | Synchronous (Course Service) | Mongoose, File Upload Handlers |
-| **Progress Service** | Tracks user progress (watch time, completed lessons, quizzes). | **NoSQL (MongoDB)** | Synchronous (API Gateway), emits `lesson_completed` event | Mongoose, Event Emitter |
-| **Reviews Service** | Handles course reviews, ratings, comment submission, average rating calculation. | **SQL (PostgreSQL)** | Synchronous (API Gateway) | TypeORM |
-| **Indexer Service** | Listens for course/review events and updates the search index. | **N/A (Uses Search Engine)** | Asynchronous (RabbitMQ) | NestJS Microservices, **Meilisearch/Elasticsearch** client |
+| **API Gateway** | Entry point, Authentication validation, Request routing, Rate limiting, Caching (Redis). | **Redis** (Caching) | HTTP (Client), Internal HTTP (Microservices) | NestJS HTTP, Passport/JWT |
+| **Identity Service** | User registration/login, JWT generation, User roles (Learner/Instructor). | **PostgreSQL** (`identity_db`) | Synchronous (API Gateway) | TypeORM |
+| **Course Service** | Course creation, Lesson structure, Category/Tag management. | **PostgreSQL** (`course_db`) | Synchronous (API Gateway), emits `course.published` | TypeORM |
+| **Media Service** | Handles custom video/document uploads, stores file metadata, integrates with S3/MinIO. | **MongoDB** (`media_db`) | Synchronous (API Gateway, Course Service) | Mongoose, File Upload Handlers |
+| **Progress Service** | Tracks user progress (watch time, completed lessons, quizzes). | **MongoDB** (`progress_db`) | Synchronous (API Gateway), emits `lesson.completed` | Mongoose, Event Emitter |
+| **Reviews Service** | Handles course reviews, ratings, comment submission, average rating calculation. | **PostgreSQL** (`reviews_db`) | Synchronous (API Gateway), emits `review.created` | TypeORM |
+| **Indexer Service** | Listens for course/review events and updates the search index. | **N/A (Uses Search Engine)** | Asynchronous (RabbitMQ) | NestJS Microservices, **Meilisearch** client |
 
 -----
 
@@ -58,28 +58,105 @@ Each service is responsible for a single business domain and uses the most appro
 
 The `docker-compose.yaml` file defines all supporting open-source infrastructure:
 
-  * **`db-sql`:** A PostgreSQL container for the SQL-based services.
-  * **`db-nosql`:** A MongoDB container for the NoSQL-based services.
-  * **`caching-service`:** A Redis container for high-speed caching in the API Gateway and Course Service.
-  * **`message-broker`:** A **RabbitMQ** container to manage asynchronous events and decoupling.
-  * **`search-engine`:** A **Meilisearch** or **Elasticsearch** container for powerful, fast course searching.
+| Service | Hostname | Port | Description | Used By |
+|--------|----------|------|-------------|---------|
+| **PostgreSQL** | `db-sql` | 5432 | SQL database (multiple logical databases) | Identity, Course, Reviews Services |
+| **MongoDB** | `db-nosql` | 27017 | NoSQL database (multiple logical databases) | Media, Progress Services |
+| **Redis** | `caching-service` | 6379 | In-memory cache (no persistence) | API Gateway, Course Service |
+| **RabbitMQ** | `message-broker` | 5672, 15672 | Message broker (AMQP + Management UI) | All services (async events) |
+| **Meilisearch** | `search-engine` | 7700 | Search engine (master key: `masterKey`) | Indexer Service |
+| **MinIO** | `minio` | 9000, 9001 | S3-compatible object storage (API + Console) | Media Service |
+
+**Key Details:**
+  * **Redis (`caching-service:6379`):** Pure cache, no persistence. Used for session storage and API response caching.
+  * **Meilisearch (`search-engine:7700`):** Used by Indexer Service only. Indexes: `courses`, `reviews`. Master key: `masterKey`.
+  * **MinIO (`minio:9000/9001`):** Bucket `skillbase-media` (auto-created, public). Used by Media Service for uploads and signed URLs.
 
 -----
 
-### 5\. Communication and Event Flow
+### 5\. Service Ports and Internal URLs
+
+#### Standardized Ports
+
+| Service | Port | Internal URL (Docker) | External URL (Host) |
+|---------|------|----------------------|---------------------|
+| api-gateway | 3000 | http://api-gateway:3000 | http://localhost:3000 |
+| identity-service | 3001 | http://identity-service:3001 | http://localhost:3001 |
+| course-service | 3002 | http://course-service:3002 | http://localhost:3002 |
+| media-service | 3003 | http://media-service:3003 | http://localhost:3003 |
+| progress-service | 3004 | http://progress-service:3004 | http://localhost:3004 |
+| reviews-service | 3005 | http://reviews-service:3005 | http://localhost:3005 |
+| indexer-service | 3006 | http://indexer-service:3006 | http://localhost:3006 |
+
+#### API Gateway Routing (External Entry Point)
+
+All client requests go through the API Gateway. The Gateway routes to backend services:
+
+- `/auth/*` → Identity Service (http://identity-service:3001)
+- `/courses/*` → Course Service (http://course-service:3002)
+- `/media/*` → Media Service (http://media-service:3003)
+- `/progress/*` → Progress Service (http://progress-service:3004)
+- `/reviews/*` → Reviews Service (http://reviews-service:3005)
+
+**Note:** Clients only interact with the API Gateway. Services communicate internally using Docker service names.
+
+### 6\. Database Structure
+
+#### PostgreSQL (db-sql:5432)
+
+Single PostgreSQL container hosting multiple logical databases:
+
+- `identity_db` - Identity Service (users, roles, authentication)
+- `course_db` - Course Service (courses, lessons, categories)
+- `reviews_db` - Reviews Service (reviews, ratings, comments)
+
+**Connection:** Services connect to `db-sql:5432` and specify their database name.
+
+#### MongoDB (db-nosql:27017)
+
+Single MongoDB container hosting multiple logical databases:
+
+- `media_db` - Media Service (file metadata, uploads)
+- `progress_db` - Progress Service (user progress, watch time, completions)
+
+**Connection:** Services connect to `db-nosql:27017` and specify their database name.
+
+### 7\. RabbitMQ Event System
+
+#### Configuration
+
+- **Hostname:** `message-broker`
+- **AMQP Port:** `5672`
+- **Management UI:** `http://localhost:15672`
+
+#### Exchange and Routing
+
+- **Exchange Name:** `skillbase.events` (topic exchange)
+- **Routing Key Format:** `dot.case` (lowercase, dot-separated)
+
+#### Core Events
+
+| Event | Routing Key | Publisher | Consumers |
+|-------|-------------|-----------|-----------|
+| Course Published | `course.published` | Course Service | Indexer Service |
+| Lesson Completed | `lesson.completed` | Progress Service | Course Service, Reviews Service |
+| Review Created | `review.created` | Reviews Service | Indexer Service, Course Service |
+
+### 8\. Communication and Event Flow
 
 #### A. Synchronous Flow (Client Request)
 
 1.  Client sends request to `http://localhost:3000/courses/123`.
-2.  **API Gateway** validates the user's JWT via the **Identity Service**.
-3.  **API Gateway** routes the request to the **Course Service**.
-4.  **Course Service** fetches data from its SQL DB and returns it.
+2.  **API Gateway** validates the user's JWT via the **Identity Service** (`http://identity-service:3001`).
+3.  **API Gateway** routes the request to the **Course Service** (`http://course-service:3002`).
+4.  **Course Service** fetches data from `course_db` in PostgreSQL (`db-sql:5432`) and returns it.
 
 #### B. Asynchronous Flow (Progress Update)
 
-1.  A learner finishes watching a lesson (Client calls the **Progress Service**).
-2.  **Progress Service** saves the completion status to **MongoDB**.
-3.  **Progress Service** emits an asynchronous event (`lesson_completed`) to **RabbitMQ**.
-4.  The **Reviews Service** and **Course Service** (and potentially others) are configured as listeners and consume the `lesson_completed` message to perform secondary tasks (e.g., mark course progress, allow review posting).
+1.  A learner finishes watching a lesson (Client calls `/progress/complete` via API Gateway).
+2.  **API Gateway** routes to **Progress Service** (`http://progress-service:3004`).
+3.  **Progress Service** saves the completion status to `progress_db` in MongoDB (`db-nosql:27017`).
+4.  **Progress Service** emits event `lesson.completed` to RabbitMQ exchange `skillbase.events`.
+5.  **Indexer Service** and **Course Service** consume the event and perform secondary tasks (e.g., update search index, mark course progress).
 
 
