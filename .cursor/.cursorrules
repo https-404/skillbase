@@ -142,21 +142,46 @@ Single MongoDB container hosting multiple logical databases:
 | Lesson Completed | `lesson.completed` | Progress Service | Course Service, Reviews Service |
 | Review Created | `review.created` | Reviews Service | Indexer Service, Course Service |
 
-### 8\. Communication and Event Flow
+### 8\. Communication Patterns and Event Flow
 
-#### A. Synchronous Flow (Client Request)
+#### Communication Rules
 
-1.  Client sends request to `http://localhost:3000/courses/123`.
-2.  **API Gateway** validates the user's JWT via the **Identity Service** (`http://identity-service:3001`).
-3.  **API Gateway** routes the request to the **Course Service** (`http://course-service:3002`).
-4.  **Course Service** fetches data from `course_db` in PostgreSQL (`db-sql:5432`) and returns it.
+**CRITICAL: Follow these communication patterns strictly:**
 
-#### B. Asynchronous Flow (Progress Update)
+1. **HTTP for Synchronous Communication:**
+   - All request/response patterns between services
+   - Client requests through API Gateway
+   - Service-to-service direct calls (e.g., API Gateway → Identity Service for auth validation)
+   - Any operation requiring immediate response
+   - Use `@nestjs/axios` HttpService or NestJS HTTP clients
+   - Example: API Gateway proxying requests to microservices
 
-1.  A learner finishes watching a lesson (Client calls `/progress/complete` via API Gateway).
-2.  **API Gateway** routes to **Progress Service** (`http://progress-service:3004`).
+2. **RabbitMQ for Asynchronous Communication:**
+   - Event-driven patterns (publish/subscribe)
+   - Decoupled service communication
+   - Fire-and-forget operations
+   - Background processing and notifications
+   - Use `@nestjs/microservices` with RabbitMQ transport
+   - Example: Course Service publishing `course.published` event
+
+**DO NOT:**
+   - Use HTTP for async operations (events, notifications, background tasks)
+   - Use RabbitMQ for synchronous request/response patterns
+   - Mix communication patterns inappropriately
+
+#### A. Synchronous Flow (HTTP) - Client Request
+
+1.  Client sends request to `http://localhost:3000/v1/courses/123`.
+2.  **API Gateway** validates the user's JWT via **HTTP** call to **Identity Service** (`http://identity-service:3001`).
+3.  **API Gateway** routes the request via **HTTP** to the **Course Service** (`http://course-service:3002`).
+4.  **Course Service** fetches data from `course_db` in PostgreSQL (`db-sql:5432`) and returns it via **HTTP** response.
+
+#### B. Asynchronous Flow (RabbitMQ) - Progress Update
+
+1.  A learner finishes watching a lesson (Client calls `/v1/progress/complete` via API Gateway).
+2.  **API Gateway** routes via **HTTP** to **Progress Service** (`http://progress-service:3004`).
 3.  **Progress Service** saves the completion status to `progress_db` in MongoDB (`db-nosql:27017`).
-4.  **Progress Service** emits event `lesson.completed` to RabbitMQ exchange `skillbase.events`.
-5.  **Indexer Service** and **Course Service** consume the event and perform secondary tasks (e.g., update search index, mark course progress).
+4.  **Progress Service** publishes event `lesson.completed` to **RabbitMQ** exchange `skillbase.events` (asynchronous).
+5.  **Indexer Service** and **Course Service** consume the event from **RabbitMQ** and perform secondary tasks (e.g., update search index, mark course progress).
 
 

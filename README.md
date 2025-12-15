@@ -246,6 +246,64 @@ Single MongoDB container hosting multiple logical databases:
 
 **Connection:** Services connect to `db-nosql:27017` and specify their database name.
 
+## 🔄 Communication Patterns
+
+### Synchronous Communication (HTTP)
+
+**Use HTTP for all synchronous, request/response operations:**
+
+- Client requests through API Gateway
+- Service-to-service direct calls requiring immediate response
+- Authentication/authorization validation
+- Data fetching and CRUD operations
+- Any operation where the caller needs an immediate result
+
+**Implementation:**
+- Use `@nestjs/axios` HttpService or NestJS HTTP clients
+- API Gateway routes requests via HTTP to microservices
+- Services communicate via HTTP when immediate response is required
+
+**Example:**
+```typescript
+// API Gateway → Identity Service (HTTP)
+const response = await this.httpService.get('http://identity-service:3001/auth/validate');
+```
+
+### Asynchronous Communication (RabbitMQ)
+
+**Use RabbitMQ for all asynchronous, event-driven operations:**
+
+- Event publishing and subscribing
+- Decoupled service communication
+- Background processing
+- Fire-and-forget operations
+- Notifications and side effects
+
+**Implementation:**
+- Use `@nestjs/microservices` with RabbitMQ transport
+- Publish events to `skillbase.events` exchange
+- Subscribe to events using routing keys
+
+**Example:**
+```typescript
+// Course Service publishes event (RabbitMQ)
+this.client.emit('course.published', { courseId: '123' });
+
+// Indexer Service consumes event (RabbitMQ)
+@EventPattern('course.published')
+async handleCoursePublished(data: { courseId: string }) {
+  // Update search index
+}
+```
+
+### Communication Rules
+
+**CRITICAL:**
+- ✅ **HTTP** for synchronous request/response patterns
+- ✅ **RabbitMQ** for asynchronous event-driven patterns
+- ❌ **DO NOT** use HTTP for async operations
+- ❌ **DO NOT** use RabbitMQ for synchronous requests
+
 ## 📨 RabbitMQ Event System
 
 ### Configuration
